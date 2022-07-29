@@ -1,0 +1,135 @@
+version: '3'
+
+services:
+  authenticationDatabase:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 30s
+      retries: 10
+    volumes:
+    - authdata:/var/lib/mysql
+    networks:
+      - authnetwork
+
+  authenticationDBMigration:
+    image: authenticationdbmigration
+    environment:
+      - DATABASE_URL=authenticationDatabase
+#    depends_on:
+#      authenticationDatabase:
+#        condition: service_healthy
+    networks:
+      - authnetwork
+
+  authentication:
+    image: authentication
+    environment:
+      - DATABASE_URL=authenticationDatabase
+#    depends_on:
+#      - authenticationDBMigration
+    ports:
+    - 5002:5002
+    networks:
+       - authnetwork
+
+  prodamnicaDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+    volumes:
+      - storedata:/var/lib/mysql
+    networks:
+      - kupac
+      - daemon
+      - admin
+
+  prodamnicaDBMigration:
+    image: prodamnicadbmigration
+    environment:
+      - DATABASE_URL=prodamnicaDB
+#    depends_on:
+#      prodamnicaDB:
+#        condition: service_healthy
+    networks:
+      - kupac
+      - daemon
+      - admin
+
+  admin:
+    image: admin
+    environment:
+      - DATABASE_URL=prodamnicaDB
+#    depends_on:
+#        - prodamnicaDBMigration
+    ports:
+      - 5003:5003
+    networks:
+      - admin
+
+  magacioner:
+    image: magacioner
+    environment:
+      - DATABASE_URL=prodamnicaDB
+#    depends_on:
+#      - prodamnicaDBMigration
+    ports:
+      - 5001:5001
+    networks:
+      - magacioner
+
+  daemon:
+    image: daemon
+    environment:
+      - DATABASE_URL=prodamnicaDB
+#    depends_on:
+#      - prodamnicaDBMigration
+    networks:
+      - daemon
+
+  kupac:
+    image: kupac
+    environment:
+      - DATABASE_URL=prodamnicaDB
+#    depends_on:
+#      - prodamnicaDBMigration
+    ports:
+      - 5000:5000
+    networks:
+      - kupac
+
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - admin
+      - authnetwork
+      - daemon
+      - kupac
+      - magacioner
+
+  redis:
+    image: redis
+    ports:
+        - 6379:6379
+    networks:
+      - daemon
+      - magacioner
+
+volumes:
+  authdata:
+  storedata:
+
+networks:
+  authnetwork:
+  kupac:
+  magacioner:
+  daemon:
+  admin:
